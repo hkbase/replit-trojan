@@ -1,25 +1,54 @@
 log:
-  loglevel: info
+  loglevel: none
 dns:
   servers:
-  - https+local://8.8.8.8/dns-query
+    - 'https+local://8.8.8.8/dns-query'
 inbounds:
-- port: 8080
-  protocol: trojan
-  settings:
-    clients:
-    - password: "PASSWORD"
-  streamSettings:
-    network: ws
-    wsSettings:
-      path: WSPATH
-  sniffing:
-    enabled: true
-    destOverride:
-    - http
-    - tls
+  - port: 443
+    protocol: trojan
+    settings:
+      clients:
+        - password: PASSWORD
+    streamSettings:
+      network: ws
+      wsSettings:
+        path: WSPATH
+      sockopt:
+        tcpcongestion: bbr
+    sniffing:
+      enabled: true
+      destOverride:
+        - http
+        - tls
 outbounds:
-- protocol: freedom
-  tag: direct
-  settings:
-    domainStrategy: UseIPv4
+  - tag: direct
+    protocol: freedom
+    settings:
+      domainStrategy: UseIPv4    
+    streamSettings:
+      sockopt:
+        tcpcongestion: bbr
+  - tag: dns-out
+    protocol: dns
+  - protocol: blackhole
+    settings:
+      response:
+        type: http
+    tag: block
+routing:
+  domainStrategy: IPIfNonMatch
+  rules:
+    - type: field
+      outboundTag: dns-out
+      network: udp
+      port: 53
+    - type: field
+      outboundTag: block
+      domain:
+        - 'geosite:category-ads-all'
+        - 'geosite:cn'
+    - type: field
+      outboundTag: block
+      ip:
+        - 'geoip:cn'
+        - 'geoip:private'
